@@ -7,16 +7,16 @@ from weapon import Weapon
 class Player:
 	""" Player object. 
 
-	Methods
-	-------
-	__init__
-
 	Attributes
 	----------
 	status: str
 	position: tuple of int
 	carry: bool
 	weapon: weapon
+	
+	Methods
+	-------
+	__init__
 	"""
 	def __init__(self, position=None, status='healthy', weapon=None, carry=False):
 		""" Initialize a player. """

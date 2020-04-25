@@ -4,14 +4,14 @@
 class Cell:
 	""" Make a cell.
 
-	Methods
-	-------
-	__init__
-
 	Attributes
 	----------
 	content: str
 	position: tuple of int or None
+	
+	Methods
+	-------
+	__init__
 	"""
 	def __init__(self, content='empty', position=None):
 		""" Initalize a cell.

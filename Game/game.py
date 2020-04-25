@@ -1,7 +1,7 @@
 """ File containing the game object. """
 
 
-import random as rand
+from random import random, choice, sample
 
 from labyrinth import Labyrinth
 from player import Player
@@ -9,7 +9,16 @@ from weapon import Weapon
 
 
 class Game:
-    """ Class tying a labyrinth and a set of players together.
+    """ Class of a game of "The Labyrinth".
+
+    Attributes
+    ----------
+    game_over: bool
+    labyrinth: labyrinth
+    turn: int
+    players: dict
+    options: list of bool
+    weapons: dict
 
     Methods
     -------
@@ -22,24 +31,36 @@ class Game:
     player_hit
     activate_cell
     is_game_over
-
-    Attributes
-    ----------
-    game_over: bool
-    labyrinth: labyrinth
-    turn: int
-    players: dict
-    options: list of bool
-    weapons: dict
     """
-    def __init__(self, labyrinth, players, wormhole=False, river=False, hospital=False):
+    def __init__(self, labyrinth: Labyrinth, players: list, options=None):
         """ Initialize a game according to the parameters entered. """
         self.game_over = False
         self.labyrinth = labyrinth
         self.turn = 0
         self.players = players
-        self.options = {'wormhole': wormhole, 'river': river, 'hospital': hospital}
         self.weapons = {'pistol': Weapon('pistol', 2, 5), 'shotgun': Weapon('shotgun', 3, 2)}
+
+
+    def display_rules(self):
+        """ Display the labyrinth game's rules. """
+        print()
+        print("***************************************")
+        print("********* THE LABYRINTH GAME **********")
+        print("***************************************")
+        print("\nRules:")
+        print("- Be 1 to 4 players.")
+        print("- Find your way around a labyrinth to find the treasure and exit with it to win.")
+        print("- Alternatively find a weapon and kill all other players to win.")
+        print("\nCommands:")
+        print("- move <direction>")
+        print("shortcuts: w, s, a, d")
+        print("- shoot <direction>")
+        print("- activate cell")
+        print("shortcut: e")
+        print("- exit")
+        print("\nDirections: up, down, left, right\n")
+        print("That is all you need to know!")
+        print("Good luck to escape, you will need it...\n")
 
 
     def set_weapons(self):
@@ -60,32 +81,29 @@ class Game:
     def randomly_place_players(self):
         """ Attribute random position to the players.
 
-        Players are not placed on the exit cell nor treasure cell.
+        Players are not placed on cells with special content.
         """
-        possible_positions = list(self.labyrinth.cells.keys())
-        possible_positions.remove(self.labyrinth.treasure_cell.position)
-        possible_positions.remove(self.labyrinth.exit_cell.position)
+        spec_contents = ['river', 'exit', 'treasure', 'map', 'arsenal', 'wormhole', 'hospital']
+        possible_positions = [pos for pos, cell in self.labyrinth.cells.items()
+                                  if cell.content not in spec_contents]
 
-        positions = rand.sample(possible_positions, k=len(self.players))
+        positions = sample(possible_positions, k=len(self.players))
         for player, pos in zip(self.players, positions): self.players[player].position = pos
     
 
-    def is_move_possible(self, player, move: str):
+    def is_move_possible(self, player: Player, move: str):
         """ Return if the move is possible and the reason why.
 
         If the players asked to exit the game it is executed here as well.
         """
-        if move == 'exit':
-            answer = input('Are you sure you want to quit the game? (y/n)')
-            if answer in ['y', 'yes']: exit(0)
-            else: return False, 'You do not want to quit, that is right do not give up'
+        if move == 'skip': return True, 'Just chill out man'
 
-        if move[:4] == 'move':
+        if move[:4] == 'move' or move in ['w', 's', 'a', 'd']:
             direction = move[5:]
-            if direction == 'up': x_move, y_move = 0, 1
-            if direction == 'down': x_move, y_move = 0, -1
-            if direction == 'left': x_move, y_move = -1, 0
-            if direction == 'right': x_move, y_move = 1, 0
+            if move == 'w' or direction == 'up': x_move, y_move = 0, 1
+            if move == 's' or direction == 'down': x_move, y_move = 0, -1
+            if move == 'a' or direction == 'left': x_move, y_move = -1, 0
+            if move == 'd' or direction == 'right': x_move, y_move = 1, 0
             x, y = self.players[player].position
             if (x + x_move, y + y_move) in self.labyrinth.cells.keys():
                 if self.labyrinth.junctions[(self.labyrinth.cells[x, y],
@@ -98,35 +116,42 @@ class Game:
             weapon = self.players[player].weapon 
             if weapon != None and weapon.name in ['pistol', 'shotgun']:
             	return True, 'Because you are armed to the teeth!'
-            else: return False, 'You do not have anything to shoot, go home..!'
+            return False, 'You do not have anything to shoot, go home..!'
 
-        if move == 'activate cell':
+        if move == 'activate cell' or move == 'e':
             if self.labyrinth.cells[self.players[player].position] != 'empty':
-                return True, 'This cell is not empty'
-            else: return False, 'This cell is empty'
+                return True, 'This cell is not empty.'
+            return False, 'There is nothing in this room, try again.'
+
+        return False, 'Move not recognized'
     
 
-    def move_player(self, player, direction: str):
+    def move_player(self, player: Player, direction: str):
         """ Modify a player's position and describe the room. """
-        if direction == 'up': x_move, y_move = 0, 1
-        if direction == 'down': x_move, y_move = 0, -1
-        if direction == 'left': x_move, y_move = -1, 0
-        if direction == 'right': x_move, y_move = 1, 0
+        if direction == 'w' or direction == 'up': x_move, y_move = 0, 1
+        if direction == 's' or direction == 'down': x_move, y_move = 0, -1
+        if direction == 'a' or direction == 'left': x_move, y_move = -1, 0
+        if direction == 'd' or direction == 'right': x_move, y_move = 1, 0
 
         x, y = self.players[player].position
         self.players[player].position = (x + x_move, y + y_move)
         content = self.labyrinth.cells[self.players[player].position].content
 
-        if content == 'empty': print('You are now in an empty room')
-        if content == 'arsenal': print('You are now in an arsenal')
-        if content == 'treasure': print('You are in the treasure room')
-        if content == 'exit': print('You are in the exit room')
+        if content == 'empty': print(player + ' is now in an empty room.')
+        if content == 'arsenal': print(player + ' is now now in an arsenal.')
+        if content == 'wormhole': print(player + ' is now in a room containing a wormhole.')
+        if content == 'treasure': print(player + ' is now in the treasure room.')
+        if content == 'map': print(player + ' is now in the map room.')
+        if content == 'exit':
+            if self.players[player].carry:
+                print(player + ' is now in the exit room and can leave.')
+            else: print(player + ' is now in the exit room but you need the treasure to leave.')
         for p in self.players:
             if p != player and self.players[p].position == self.players[player].position:
-                print('You find yourself in the same room as ' + p)
+                print(player + ' finds itself in the same room as ' + p)
     
 
-    def shoot(self, player, direction: str):
+    def shoot(self, player: Player, direction: str):
         """ Check if another player is hit by player and describe what happens. """
         if direction == 'up': x_move, y_move = 0, 1
         if direction == 'down': x_move, y_move = 0, -1
@@ -172,7 +197,7 @@ class Game:
         print('The bullet hit a wall')
     
 
-    def player_hit(self, player, weapon):
+    def player_hit(self, player: Player, weapon: Weapon):
         """ Change player's status according to the weapon damage, describes what happened. """
         status = self.players[player].status
         if weapon.damage == 3: self.players[player].status = 'dead'
@@ -188,7 +213,7 @@ class Game:
             print(player + ' got hit, dropped the treasure, and is now ' + self.players[player].status)
 
     
-    def activate_cell(self, player):
+    def activate_cell(self, player: Player):
         """ Execute the cell action.
 
         If the cell contains an arsenal then the player pick up a random weapon.
@@ -196,12 +221,31 @@ class Game:
         Describe what happens.
         """
         content = self.labyrinth.cells[self.players[player].position].content
+        pos = self.labyrinth.cells[self.players[player].position].position
+
+        if content == 'map':
+            print('You approach some strange writing on a rock and understand it is a map.')
+            self.labyrinth.display_labyrinth()
 
         if content == 'arsenal':
-            if rand.random() < .5: weapon = 'pistol'
+            if random() < .5: weapon = 'pistol'
             else: weapon = 'shotgun'
             self.players[player].weapon = self.weapons[weapon]
             print('You picked up a ' + weapon)
+
+        if content == 'wormhole':
+            for i in range(len(self.labyrinth.wormholes)):
+                if self.labyrinth.wormholes[i] == self.labyrinth.cells[pos]:
+                    new_pos = self.labyrinth.wormholes[(i + 1) % len(self.labyrinth.wormholes)].position
+                    self.players[player].position = new_pos
+                    print('As you approach the wormhole you fear the unknown '
+                           + 'but due to your lack of common sense you still get in '
+                           + 'and after what seems to be an eternity you finally exit from another wormhole.')
+            
+            for p in self.players:
+                if p != player and self.players[p].position == self.players[player].position:
+                    print('You find yourself in the same room as ' + p)
+
 
         if content == 'treasure':
             self.players[player].carry = True
@@ -209,6 +253,54 @@ class Game:
             print('You now carry the treasure')
 
         if content == 'empty': print('Nothing happens')
+
+
+    def move_bear_npc(self):
+        """ Move randomly the bear npc player and hurt/move other players if on same case. """
+        while True:
+            direction = choice(['up', 'down', 'left', 'right'])
+
+            if direction == 'up': x_move, y_move = 0, 1
+            if direction == 'down': x_move, y_move = 0, -1
+            if direction == 'left': x_move, y_move = -1, 0
+            if direction == 'right': x_move, y_move = 1, 0
+
+            x, y = self.players['Bear NPC'].position
+            if (x + x_move, y + y_move) in self.labyrinth.cells.keys():
+                if self.labyrinth.junctions[(self.labyrinth.cells[x, y],
+                                             self.labyrinth.cells[x + x_move, y + y_move])] != 'wall':
+                    self.players['Bear NPC'].position = x + x_move, y + y_move
+                    break
+
+            for player in self.players:
+                if player == 'Bear NPC': continue
+                if self.players[player].position == self.players['Bear NPC'].position:
+                    self.player_hit(player, Weapon('Bear paw', 2, 0))
+                    while True:
+                        direction = choice(['up', 'down', 'left', 'right'])
+                        if self.is_move_possible(player, 'move ' + direction): break
+                    self.move_player(player, direction)
+
+
+
+    def river_move_player(self, player: Player):
+        """ Move a player two cells down the river flow unless if at the end. """
+        idx = 0
+        for cell in self.labyrinth.river:
+            if cell == self.labyrinth.cells[self.players[player].position]: break
+            idx += 1
+
+        if idx == len(self.labyrinth.river) - 1:
+            if player == 'Bear NPC': return 0
+            print('The strong current shakes you but you stay in place.')
+            return 0
+
+        for i in range(2):
+            if idx < len(self.labyrinth.river) - 1:
+                self.players[player].position = self.labyrinth.river[(idx + 1)].position
+                idx += 1
+        if player == 'Bear NPC': return 0
+        print('The strong current of the river moves you down stream.')
     
 
     def is_game_over(self):
@@ -227,7 +319,7 @@ class Game:
             else: players_alive.append(player)
 
         # If only one player is playing then do not consider being the only one left alive as a win
-        if len(self.players) == 1:
+        if len(self.players) == 1 or (len(self.players) == 2 and 'Bear NPC' in self.players):
             reason = 'You have to find the treasure and exit!'
             return False, reason
 
